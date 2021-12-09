@@ -1,0 +1,65 @@
+version: "2.4"
+
+services:
+  python-app:
+    build: .
+    environment:
+      - DEBUG=False
+      - LOGLEVEL=VERBOSE
+      - REGISTRATION_MONGO_URI=mongodb://dbadmin:mongopass@database:27017/?retryWrites=true&w=majority
+    volumes:
+        - ./data/app:/opt/app
+    ports:
+      - "48080:8080"
+    depends_on:
+      - database
+    networks:
+      - devnet
+    privileged: false
+    read_only: false
+    restart: on-failure:5
+    cpus: '1'
+    cpu_shares: 1024
+    mem_limit: 2G
+    mem_reservation: 512M
+    pids_limit: 500
+    healthcheck:
+      test: "curl http://localhost:8080/healthcheck"
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    security_opt:
+        - label:user:testuser
+        - no-new-privileges:true
+
+  database:
+    image: docker.io/library/mongo:latest
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=dbadmin
+      - MONGO_INITDB_ROOT_PASSWORD=mongopass
+    networks:
+      - devnet
+    volumes:
+        - ./data/db:/data/db
+    privileged: false
+    read_only: false
+    restart: on-failure:5
+    cpus: '1'
+    cpu_shares: 1024
+    mem_limit: 2G
+    mem_reservation: 512M
+    pids_limit: 500
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongo mongo:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    security_opt:
+        - label:user:testuser
+        - no-new-privileges:true
+
+networks:
+  devnet:
+    driver: bridge
